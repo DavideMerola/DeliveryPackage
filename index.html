@@ -1782,8 +1782,18 @@
       };
 
       // Strutture per la ricerca veloce e l'ordinamento
-      const routeFlat = { "Zona A": [], "Zona B": [] };
-      const routeMaxIndex = { "Zona A": {}, "Zona B": {} };
+      const routeFlat = {
+        "Zona A": [],
+        "Zona B": [],
+        "Zona 24A": [],
+        "Zona 24B": [],
+      };
+      const routeMaxIndex = {
+        "Zona A": {},
+        "Zona B": {},
+        "Zona 24A": {},
+        "Zona 24B": {},
+      };
 
       function inizializzaMotoreRicerca() {
         for (let zona in masterRoute) {
