@@ -6,15 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <!-- Impostazioni e Icona per Web App iPhone -->
-    <link rel="apple-touch-icon" href="icona.svg" />
-    <link rel="icon" type="image/svg+xml" href="icona.svg" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Consegne" />
-    
     <title>Consegne WatchSync</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Libreria Tesseract.js per lo scanner 1-Click -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap");
       body {
@@ -151,25 +146,46 @@
       <div
         class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4"
       >
-        <!-- SCANSIONE NATIVA iOS -->
-        <div class="mb-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-          <label class="block text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            </svg>
-            Scansione Veloce iPhone
-          </label>
-          <input
-            type="text"
-            id="inputScannerNativo"
-            placeholder="Tocca qui e usa l'icona scanner 📷"
-            class="w-full bg-white border border-indigo-200 rounded-lg p-4 font-medium text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 shadow-inner"
-            oninput="gestisciScansioneNativa(this.value)"
-          />
-          <p class="text-[10px] text-indigo-500 mt-2 leading-tight">Tocca il campo, premi l'icona dello scanner sulla tastiera e inquadra l'etichetta.</p>
+        <!-- DOPPIO SISTEMA DI SCANSIONE -->
+        <div class="grid grid-cols-2 gap-2">
+          <!-- 1. Scanner 1-Click con Tesseract -->
+          <div>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="elaboraFotoConTesseract(event)" />
+            <button
+              onclick="document.getElementById('cameraInput').click()"
+              class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs py-3 px-2 rounded-xl shadow transition active:scale-95 flex flex-col items-center justify-center gap-1"
+              id="btnScansione"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span id="btnScansioneText">Scatto rapido</span>
+            </button>
+          </div>
+
+          <!-- 2. Scanner Nativo iOS (Testo Attivo) -->
+          <div>
+            <input
+              type="text"
+              id="inputScannerNativo"
+              placeholder="Scanner iOS 📷"
+              class="w-full h-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-xs font-semibold text-slate-700 placeholder-slate-400 text-center focus:ring-2 focus:ring-blue-500 shadow-inner"
+              oninput="gestisciScansioneNativa(this.value)"
+            />
+          </div>
         </div>
-        
-        <div class="border-t border-slate-100 my-4"></div>
+
+        <!-- OPZIONE PACCO ESTERO -->
+        <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-3 rounded-xl">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🌍</span>
+            <label for="checkEstero" class="text-xs font-bold text-amber-800 uppercase tracking-wider cursor-pointer">Pacco Estero</label>
+          </div>
+          <input type="checkbox" id="checkEstero" class="w-5 h-5 text-amber-600 rounded focus:ring-amber-500 border-amber-300 cursor-pointer" />
+        </div>
+
+        <div class="border-t border-slate-100 my-2"></div>
 
         <div>
           <label
@@ -308,6 +324,48 @@
       </div>
     </div>
 
+    <!-- Modal Modifica Pacco -->
+    <div
+      id="editModal"
+      class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300"
+    >
+      <div
+        class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 transform scale-95 transition-transform duration-300"
+        id="editBox"
+      >
+        <h3 class="text-center text-xl font-bold text-slate-800 mb-1">
+          Modifica Pacco
+        </h3>
+        <input type="hidden" id="editId" />
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">Strada</label>
+          <select id="editStrada" class="w-full bg-slate-100 border-none rounded-xl p-3 font-bold text-slate-700"></select>
+        </div>
+
+        <div class="flex gap-2">
+          <div class="w-1/2">
+            <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">Civico</label>
+            <input type="text" id="editCivico" class="w-full bg-slate-100 border-none rounded-xl p-3 font-bold uppercase text-slate-800" />
+          </div>
+          <div class="w-1/2">
+            <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase">Pezzi</label>
+            <input type="number" id="editPezzi" min="1" class="w-full bg-slate-100 border-none rounded-xl p-3 font-bold text-slate-800 text-center" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-3 rounded-xl">
+          <span class="text-sm font-bold text-amber-800">🌍 Pacco Estero</span>
+          <input type="checkbox" id="editEstero" class="w-5 h-5 text-amber-600 rounded border-amber-300 cursor-pointer" />
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="salvaModificaPacco()" class="w-1/2 bg-blue-600 text-white font-bold py-3 rounded-xl shadow">Salva</button>
+          <button onclick="chiudiEditModal()" class="w-1/2 bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Annulla</button>
+        </div>
+      </div>
+    </div>
+
     <div
       id="watchModal"
       class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4 opacity-0 transition-opacity duration-300"
@@ -357,25 +415,86 @@
           {
             street: "Castellana",
             civici: [
-              "26a", "28", "30", "30a", "30b", "67", "65h", "65g", "65f", "65e",
-              "65d", "65c", "65b", "65a", "65",
+              "26a",
+              "28",
+              "30",
+              "30a",
+              "30b",
+              "67",
+              "65h",
+              "65g",
+              "65f",
+              "65e",
+              "65d",
+              "65c",
+              "65b",
+              "65a",
+              "65",
             ],
           },
           {
             street: "Guardi",
             civici: [
-              "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "21",
-              "19", "17", "15", "13", "11", "9", "7", "5", "3", "1",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "21",
+              "19",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["63n", "34", "34b", "34c", "34d"] },
           {
             street: "Bellotto",
             civici: [
-              "2", "2a", "2b", "2c", "4", "4a", "4b", "6", "8", "8a", "8b",
-              "8c", "10", "12", "12a", "12b", "12c", "14", "14a", "14b", "16",
-              "16a", "18", "18a", "18b", "18c", "18d", "20", "22", "30", "32",
-              "5", "3",
+              "2",
+              "2a",
+              "2b",
+              "2c",
+              "4",
+              "4a",
+              "4b",
+              "6",
+              "8",
+              "8a",
+              "8b",
+              "8c",
+              "10",
+              "12",
+              "12a",
+              "12b",
+              "12c",
+              "14",
+              "14a",
+              "14b",
+              "16",
+              "16a",
+              "18",
+              "18a",
+              "18b",
+              "18c",
+              "18d",
+              "20",
+              "22",
+              "30",
+              "32",
+              "5",
+              "3",
             ],
           },
           {
@@ -385,8 +504,22 @@
           {
             street: "Pittoni",
             civici: [
-              "2", "4", "6", "8", "10", "10a", "21", "19", "17", "15", "13",
-              "11", "9", "7", "5", "3",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "10a",
+              "21",
+              "19",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
             ],
           },
           {
@@ -396,29 +529,81 @@
           {
             street: "Giambellino",
             civici: [
-              "4", "6", "8", "10", "12", "15", "13", "11", "9", "7", "5", "3",
-              "1a", "1",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1a",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["93b"] },
           {
             street: "Marzenego",
             civici: [
-              "2", "4", "6", "8", "10", "12", "15", "13", "11", "9", "7", "3", "1",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "3",
+              "1",
             ],
           },
           {
             street: "Molino Ronchin",
             civici: [
-              "2", "2a", "2b", "2c", "2d", "4", "6", "8", "10", "10a", "10b",
-              "10c", "7", "5", "3", "1",
+              "2",
+              "2a",
+              "2b",
+              "2c",
+              "2d",
+              "4",
+              "6",
+              "8",
+              "10",
+              "10a",
+              "10b",
+              "10c",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           {
             street: "Castellana",
             civici: [
-              "93a", "93", "87p", "87a", "87", "85", "83a", "83", "81", "79",
-              "77", "75", "71", "69a", "69", "32",
+              "93a",
+              "93",
+              "87p",
+              "87a",
+              "87",
+              "85",
+              "83a",
+              "83",
+              "81",
+              "79",
+              "77",
+              "75",
+              "71",
+              "69a",
+              "69",
+              "32",
             ],
           },
           {
@@ -429,74 +614,285 @@
           {
             street: "Piranesi",
             civici: [
-              "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22",
-              "26", "27", "25", "23", "21", "19", "17a", "17", "15", "13",
-              "11", "9", "7", "5", "3", "1", "2",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "26",
+              "27",
+              "25",
+              "23",
+              "21",
+              "19",
+              "17a",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
+              "2",
             ],
           },
           {
             street: "Piazzetta",
             civici: [
-              "4", "6", "8", "10", "12", "14", "16", "18", "20", "22", "24",
-              "26", "28", "29", "27", "25b", "25a", "25", "23", "21", "19",
-              "17", "15", "13a", "13", "11", "9", "7", "5", "3", "1",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "28",
+              "29",
+              "27",
+              "25b",
+              "25a",
+              "25",
+              "23",
+              "21",
+              "19",
+              "17",
+              "15",
+              "13a",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           {
             street: "Castellana",
             civici: [
-              "63i", "63l", "63b", "63d", "63e", "63f", "63g", "63h", "63",
-              "61u", "61t", "61s", "61r", "61q", "61p", "61n", "61m", "61l",
-              "61h", "61i", "61g", "61e", "61f", "61b", "61a", "61", "59c",
-              "59", "57", "55", "53", "51", "49", "47", "45", "43", "41", "39",
-              "37", "35b", "35a", "35", "33", "31", "29", "27d", "27c", "27b",
-              "27a", "27", "25m", "25l", "25i", "25h", "25g", "25f",
+              "63i",
+              "63l",
+              "63b",
+              "63d",
+              "63e",
+              "63f",
+              "63g",
+              "63h",
+              "63",
+              "61u",
+              "61t",
+              "61s",
+              "61r",
+              "61q",
+              "61p",
+              "61n",
+              "61m",
+              "61l",
+              "61h",
+              "61i",
+              "61g",
+              "61e",
+              "61f",
+              "61b",
+              "61a",
+              "61",
+              "59c",
+              "59",
+              "57",
+              "55",
+              "53",
+              "51",
+              "49",
+              "47",
+              "45",
+              "43",
+              "41",
+              "39",
+              "37",
+              "35b",
+              "35a",
+              "35",
+              "33",
+              "31",
+              "29",
+              "27d",
+              "27c",
+              "27b",
+              "27a",
+              "27",
+              "25m",
+              "25l",
+              "25i",
+              "25h",
+              "25g",
+              "25f",
             ],
           },
           {
             street: "Gaggian",
             civici: [
-              "10", "12", "14", "14a", "16", "18", "20", "22", "24", "15", "13",
-              "11", "9", "7", "5", "3", "1",
+              "10",
+              "12",
+              "14",
+              "14a",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           {
             street: "Castellana",
             civici: [
-              "25e", "25d", "25c", "25b", "25a", "25", "23l", "23h", "23g",
+              "25e",
+              "25d",
+              "25c",
+              "25b",
+              "25a",
+              "25",
+              "23l",
+              "23h",
+              "23g",
             ],
           },
           {
             street: "Cima",
             civici: [
-              "4", "6", "8", "10", "12", "14", "19", "17", "15", "13", "11",
-              "9", "7", "5", "3", "1",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "19",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["23c", "23b", "23"] },
           {
             street: "Pordenone",
             civici: [
-              "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22",
-              "24", "26", "27", "25", "23", "21a", "21", "19", "17", "15",
-              "13", "11", "9", "7", "5", "3", "1a", "1",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "27",
+              "25",
+              "23",
+              "21a",
+              "21",
+              "19",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1a",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["21a"] },
           {
             street: "Buzzola",
             civici: [
-              "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22",
-              "24", "26", "28", "30", "31", "29", "27", "25", "23", "21", "19",
-              "17", "15", "13", "11", "9", "7", "5", "3", "1",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "28",
+              "30",
+              "31",
+              "29",
+              "27",
+              "25",
+              "23",
+              "21",
+              "19",
+              "17",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["21", "19", "17c", "17b"] },
           {
             street: "Giorgione",
             civici: [
-              "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22",
-              "15", "13", "11", "9", "7", "5", "3", "1",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "15",
+              "13",
+              "11",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           { street: "Castellana", civici: ["17a", "17", "15", "13"] },
@@ -505,10 +901,40 @@
           {
             street: "Castellana",
             civici: [
-              "2", "4", "6", "8", "8a", "8c", "10", "10a", "12", "11b", "11a",
-              "11", "9", "7", "5b", "5a", "5", "3", "1", "14", "16", "16a",
-              "16b", "16c", "16e", "16g", "16h", "16m", "18", "20", "20a", "20b",
-              "20c", "20d",
+              "2",
+              "4",
+              "6",
+              "8",
+              "8a",
+              "8c",
+              "10",
+              "10a",
+              "12",
+              "11b",
+              "11a",
+              "11",
+              "9",
+              "7",
+              "5b",
+              "5a",
+              "5",
+              "3",
+              "1",
+              "14",
+              "16",
+              "16a",
+              "16b",
+              "16c",
+              "16e",
+              "16g",
+              "16h",
+              "16m",
+              "18",
+              "20",
+              "20a",
+              "20b",
+              "20c",
+              "20d",
             ],
           },
           { street: "Nono", civici: ["2", "4", "6", "7", "5", "3", "1"] },
@@ -516,7 +942,18 @@
           {
             street: "Milesi",
             civici: [
-              "2", "1", "3", "4", "4a", "5", "7", "6", "9", "11", "8", "13",
+              "2",
+              "1",
+              "3",
+              "4",
+              "4a",
+              "5",
+              "7",
+              "6",
+              "9",
+              "11",
+              "8",
+              "13",
             ],
           },
           { street: "Gazzato", civici: ["1b", "1a", "1", "2", "4"] },
@@ -524,40 +961,147 @@
           {
             street: "Gazzato",
             civici: [
-              "3", "5", "2a", "4a", "4b", "4c", "4d", "6", "6a", "7", "9",
-              "6b", "11", "13", "6c", "15", "17", "8", "8a", "8b", "21", "23",
-              "8c", "10", "10a", "25", "25a", "27", "29", "31", "20",
+              "3",
+              "5",
+              "2a",
+              "4a",
+              "4b",
+              "4c",
+              "4d",
+              "6",
+              "6a",
+              "7",
+              "9",
+              "6b",
+              "11",
+              "13",
+              "6c",
+              "15",
+              "17",
+              "8",
+              "8a",
+              "8b",
+              "21",
+              "23",
+              "8c",
+              "10",
+              "10a",
+              "25",
+              "25a",
+              "27",
+              "29",
+              "31",
+              "20",
             ],
           },
           { street: "Veneziano", civici: ["2", "5"] },
           {
             street: "Ciardi",
             civici: [
-              "58", "60", "62", "64", "66", "53", "51b", "51a", "51", "49a", "49",
+              "58",
+              "60",
+              "62",
+              "64",
+              "66",
+              "53",
+              "51b",
+              "51a",
+              "51",
+              "49a",
+              "49",
             ],
           },
           {
             street: "Veneziano",
             civici: [
-              "4", "6", "6a", "8", "10", "12", "14", "16", "18", "20", "22",
-              "24", "26", "28", "30", "32", "15", "13",
+              "4",
+              "6",
+              "6a",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "28",
+              "30",
+              "32",
+              "15",
+              "13",
             ],
           },
           {
             street: "Diziani",
             civici: [
-              "2", "4", "4a", "6", "8", "10", "10a", "12", "14", "16", "16a",
-              "18", "20", "22", "24", "19", "17", "15a", "15", "13", "11",
-              "9b", "9a", "9", "7", "5", "3", "1",
+              "2",
+              "4",
+              "4a",
+              "6",
+              "8",
+              "10",
+              "10a",
+              "12",
+              "14",
+              "16",
+              "16a",
+              "18",
+              "20",
+              "22",
+              "24",
+              "19",
+              "17",
+              "15a",
+              "15",
+              "13",
+              "11",
+              "9b",
+              "9a",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1",
             ],
           },
           {
             street: "Magnasco",
             civici: [
-              "35", "44", "33a", "42", "33", "34a", "31", "29", "27", "40",
-              "25", "38", "23", "21", "19", "17", "15", "36a", "36", "34",
-              "32", "11b", "11c", "11d", "11e", "13", "13a", "11a", "30",
-              "11", "28", "3",
+              "35",
+              "44",
+              "33a",
+              "42",
+              "33",
+              "34a",
+              "31",
+              "29",
+              "27",
+              "40",
+              "25",
+              "38",
+              "23",
+              "21",
+              "19",
+              "17",
+              "15",
+              "36a",
+              "36",
+              "34",
+              "32",
+              "11b",
+              "11c",
+              "11d",
+              "11e",
+              "13",
+              "13a",
+              "11a",
+              "30",
+              "11",
+              "28",
+              "3",
             ],
           },
           {
@@ -567,31 +1111,110 @@
           {
             street: "Magnasco",
             civici: [
-              "26", "24a", "1", "24", "22", "20", "18", "16", "12", "10", "6",
+              "26",
+              "24a",
+              "1",
+              "24",
+              "22",
+              "20",
+              "18",
+              "16",
+              "12",
+              "10",
+              "6",
             ],
           },
           {
             street: "Castellana",
             civici: [
-              "24h", "24g", "24f", "24e", "24d", "24", "22u", "22t", "22s",
-              "22r", "22q", "22p", "22o",
+              "24h",
+              "24g",
+              "24f",
+              "24e",
+              "24d",
+              "24",
+              "22u",
+              "22t",
+              "22s",
+              "22r",
+              "22q",
+              "22p",
+              "22o",
             ],
           },
           {
             street: "Ciardi",
             civici: [
-              "1", "2", "5", "7", "9", "8", "12", "3", "4", "13", "14", "17",
-              "16", "16a", "18", "19", "20", "21", "22", "24", "24a", "24b",
-              "26", "23", "25", "28", "30", "32", "34", "36", "38", "40", "42",
-              "44", "46", "48", "48a", "50", "52", "54", "56", "45a", "45",
-              "43", "41", "39", "33a", "33", "31", "29", "27",
+              "1",
+              "2",
+              "5",
+              "7",
+              "9",
+              "8",
+              "12",
+              "3",
+              "4",
+              "13",
+              "14",
+              "17",
+              "16",
+              "16a",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "24",
+              "24a",
+              "24b",
+              "26",
+              "23",
+              "25",
+              "28",
+              "30",
+              "32",
+              "34",
+              "36",
+              "38",
+              "40",
+              "42",
+              "44",
+              "46",
+              "48",
+              "48a",
+              "50",
+              "52",
+              "54",
+              "56",
+              "45a",
+              "45",
+              "43",
+              "41",
+              "39",
+              "33a",
+              "33",
+              "31",
+              "29",
+              "27",
             ],
           },
           { street: "Salvator Rosa", civici: ["6a", "6b", "8", "10", "7"] },
           {
             street: "Pietra Vecchia",
             civici: [
-              "13", "10", "8", "11", "9", "7", "6b", "6a", "5", "6", "3", "4", "2",
+              "13",
+              "10",
+              "8",
+              "11",
+              "9",
+              "7",
+              "6b",
+              "6a",
+              "5",
+              "6",
+              "3",
+              "4",
+              "2",
             ],
           },
           {
@@ -604,8 +1227,23 @@
           {
             street: "Olivolo",
             civici: [
-              "9", "7", "5", "3", "1A", "1", "4", "4A", "6", "6B", "8", "10",
-              "14", "16", "18", "20", "22",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1A",
+              "1",
+              "4",
+              "4A",
+              "6",
+              "6B",
+              "8",
+              "10",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
             ],
           },
           {
@@ -615,7 +1253,17 @@
           {
             street: "Santa Chiara",
             civici: [
-              "11", "7A", "7B", "7", "5B", "5A", "5", "3D", "3A", "3", "4",
+              "11",
+              "7A",
+              "7B",
+              "7",
+              "5B",
+              "5A",
+              "5",
+              "3D",
+              "3A",
+              "3",
+              "4",
             ],
           },
           {
@@ -634,14 +1282,38 @@
           {
             street: "Mentana",
             civici: [
-              "4", "5", "6", "8", "5A", "5B", "7", "9", "11", "20", "20A",
+              "4",
+              "5",
+              "6",
+              "8",
+              "5A",
+              "5B",
+              "7",
+              "9",
+              "11",
+              "20",
+              "20A",
             ],
           },
           {
             street: "San Fermo",
             civici: [
-              "11", "20", "18", "16", "14", "12", "10", "9", "8", "7A", "6",
-              "7", "5", "3", "2", "4",
+              "11",
+              "20",
+              "18",
+              "16",
+              "14",
+              "12",
+              "10",
+              "9",
+              "8",
+              "7A",
+              "6",
+              "7",
+              "5",
+              "3",
+              "2",
+              "4",
             ],
           },
           {
@@ -655,7 +1327,19 @@
           {
             street: "Goito",
             civici: [
-              "2", "1", "3", "5", "7", "9", "11", "8", "13", "12", "16", "20", "22",
+              "2",
+              "1",
+              "3",
+              "5",
+              "7",
+              "9",
+              "11",
+              "8",
+              "13",
+              "12",
+              "16",
+              "20",
+              "22",
             ],
           },
           {
@@ -665,10 +1349,39 @@
           {
             street: "Borgo Pezzana",
             civici: [
-              "3", "5", "7", "11", "15", "29", "29A", "33", "35", "37", "39",
-              "41", "43", "45", "47", "49", "51", "53", "57", "59", "61A",
-              "63A", "63B", "63C", "63D", "63G", "63F", "63E", "63H", "63I",
-              "73", "75", "4",
+              "3",
+              "5",
+              "7",
+              "11",
+              "15",
+              "29",
+              "29A",
+              "33",
+              "35",
+              "37",
+              "39",
+              "41",
+              "43",
+              "45",
+              "47",
+              "49",
+              "51",
+              "53",
+              "57",
+              "59",
+              "61A",
+              "63A",
+              "63B",
+              "63C",
+              "63D",
+              "63G",
+              "63F",
+              "63E",
+              "63H",
+              "63I",
+              "73",
+              "75",
+              "4",
             ],
           },
           { street: "Terraglio", civici: ["13", "22"] },
@@ -683,23 +1396,80 @@
           {
             street: "Fratelli Cairoli",
             civici: [
-              "12", "10", "8", "1", "6E", "6D", "6C", "6B", "6A", "6", "4C",
-              "4D", "4B", "4A", "4", "2",
+              "12",
+              "10",
+              "8",
+              "1",
+              "6E",
+              "6D",
+              "6C",
+              "6B",
+              "6A",
+              "6",
+              "4C",
+              "4D",
+              "4B",
+              "4A",
+              "4",
+              "2",
             ],
           },
           {
             street: "Grazioli",
             civici: [
-              "2", "1", "3", "4", "6", "3A", "3B", "5", "8", "10", "11", "12",
-              "14", "17", "15A", "15", "13", "16", "18", "20", "21", "23",
-              "22", "24", "25", "27", "29", "43", "45", "47", "28", "30",
+              "2",
+              "1",
+              "3",
+              "4",
+              "6",
+              "3A",
+              "3B",
+              "5",
+              "8",
+              "10",
+              "11",
+              "12",
+              "14",
+              "17",
+              "15A",
+              "15",
+              "13",
+              "16",
+              "18",
+              "20",
+              "21",
+              "23",
+              "22",
+              "24",
+              "25",
+              "27",
+              "29",
+              "43",
+              "45",
+              "47",
+              "28",
+              "30",
             ],
           },
           {
             street: "Carlo Poma",
             civici: [
-              "1", "3", "5", "5A", "5B", "4", "7", "6", "8", "9", "10", "14",
-              "16", "15", "13", "11",
+              "1",
+              "3",
+              "5",
+              "5A",
+              "5B",
+              "4",
+              "7",
+              "6",
+              "8",
+              "9",
+              "10",
+              "14",
+              "16",
+              "15",
+              "13",
+              "11",
             ],
           },
           {
@@ -715,8 +1485,27 @@
           {
             street: "Pionara",
             civici: [
-              "1", "5", "5", "2", "2A", "2B", "5A", "7", "9", "11", "13", "15",
-              "17", "6", "8", "10", "12", "14", "16", "18", "20",
+              "1",
+              "5",
+              "5",
+              "2",
+              "2A",
+              "2B",
+              "5A",
+              "7",
+              "9",
+              "11",
+              "13",
+              "15",
+              "17",
+              "6",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "20",
             ],
           },
           { street: "Don Tosatto", civici: ["24", "26"] },
@@ -740,8 +1529,23 @@
           {
             street: "Peppino Impastato",
             civici: [
-              "2", "4", "6", "8", "10", "30", "30A", "32", "32A", "32B", "34",
-              "22", "24", "26", "28", "14", "12",
+              "2",
+              "4",
+              "6",
+              "8",
+              "10",
+              "30",
+              "30A",
+              "32",
+              "32A",
+              "32B",
+              "34",
+              "22",
+              "24",
+              "26",
+              "28",
+              "14",
+              "12",
             ],
           },
         ],
@@ -749,17 +1553,71 @@
           {
             street: "Torre Belfredo",
             civici: [
-              "120B", "120C", "122", "122E", "122D", "122C", "122B", "122A",
+              "120B",
+              "120C",
+              "122",
+              "122E",
+              "122D",
+              "122C",
+              "122B",
+              "122A",
             ],
           },
           {
             street: "Filiasi",
             civici: [
-              "127", "125", "123", "121", "119", "117", "115", "113", "111",
-              "109", "107", "105", "103", "99", "97", "95", "93/91", "77", "75",
-              "19", "21", "23", "25", "27", "29", "49", "51", "53", "55", "57",
-              "59", "61", "63", "65", "34", "36", "38", "40", "42", "44", "46",
-              "46B", "48", "50", "58", "60", "64", "2", "4", "6", "118", "120",
+              "127",
+              "125",
+              "123",
+              "121",
+              "119",
+              "117",
+              "115",
+              "113",
+              "111",
+              "109",
+              "107",
+              "105",
+              "103",
+              "99",
+              "97",
+              "95",
+              "93/91",
+              "77",
+              "75",
+              "19",
+              "21",
+              "23",
+              "25",
+              "27",
+              "29",
+              "49",
+              "51",
+              "53",
+              "55",
+              "57",
+              "59",
+              "61",
+              "63",
+              "65",
+              "34",
+              "36",
+              "38",
+              "40",
+              "42",
+              "44",
+              "46",
+              "46B",
+              "48",
+              "50",
+              "58",
+              "60",
+              "64",
+              "2",
+              "4",
+              "6",
+              "118",
+              "120",
             ],
           },
           {
@@ -769,8 +1627,19 @@
           {
             street: "Torre Belfredo",
             civici: [
-              "124A", "124C", "124D", "126", "126A", "77", "79", "81A", "81B",
-              "81C", "81D", "81E", "83",
+              "124A",
+              "124C",
+              "124D",
+              "126",
+              "126A",
+              "77",
+              "79",
+              "81A",
+              "81B",
+              "81C",
+              "81D",
+              "81E",
+              "83",
             ],
           },
           {
@@ -780,42 +1649,178 @@
           {
             street: "Torre Belfredo",
             civici: [
-              "85", "85A", "85B", "87", "87B", "89", "89A", "91", "91A", "93",
-              "95", "97", "99", "101", "103", "105", "107", "109", "115", "121",
-              "123", "125", "130A", "132", "134", "140", "142", "144", "146",
-              "148", "150",
+              "85",
+              "85A",
+              "85B",
+              "87",
+              "87B",
+              "89",
+              "89A",
+              "91",
+              "91A",
+              "93",
+              "95",
+              "97",
+              "99",
+              "101",
+              "103",
+              "105",
+              "107",
+              "109",
+              "115",
+              "121",
+              "123",
+              "125",
+              "130A",
+              "132",
+              "134",
+              "140",
+              "142",
+              "144",
+              "146",
+              "148",
+              "150",
             ],
           },
           {
             street: "Terraglio",
             civici: [
-              "6", "6A", "8", "10", "12", "14", "16", "18", "22", "24", "26",
-              "28", "30", "32", "32A",
+              "6",
+              "6A",
+              "8",
+              "10",
+              "12",
+              "14",
+              "16",
+              "18",
+              "22",
+              "24",
+              "26",
+              "28",
+              "30",
+              "32",
+              "32A",
             ],
           },
           {
             street: "Bruno NAO",
             civici: [
-              "2", "1", "4", "6", "5", "7", "8", "8A", "10", "14", "16", "18",
-              "20", "20A", "9", "9A", "11", "13", "15", "17", "19", "21", "24",
-              "26", "28", "32", "31", "29", "27", "25", "23",
+              "2",
+              "1",
+              "4",
+              "6",
+              "5",
+              "7",
+              "8",
+              "8A",
+              "10",
+              "14",
+              "16",
+              "18",
+              "20",
+              "20A",
+              "9",
+              "9A",
+              "11",
+              "13",
+              "15",
+              "17",
+              "19",
+              "21",
+              "24",
+              "26",
+              "28",
+              "32",
+              "31",
+              "29",
+              "27",
+              "25",
+              "23",
             ],
           },
           {
             street: "Marcon Egidio",
             civici: [
-              "12", "12A", "14", "16", "18", "20", "22", "24", "26", "28", "30",
-              "27", "25", "23", "21", "19", "17", "15A", "15", "13", "11", "9A",
-              "9", "7", "5", "3", "1B", "1A", "1", "4", "6", "8", "10",
+              "12",
+              "12A",
+              "14",
+              "16",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "28",
+              "30",
+              "27",
+              "25",
+              "23",
+              "21",
+              "19",
+              "17",
+              "15A",
+              "15",
+              "13",
+              "11",
+              "9A",
+              "9",
+              "7",
+              "5",
+              "3",
+              "1B",
+              "1A",
+              "1",
+              "4",
+              "6",
+              "8",
+              "10",
             ],
           },
           {
             street: "Camuffo",
             civici: [
-              "28", "28A", "30", "32", "34", "36", "38", "40", "40A", "42", "44",
-              "46", "48", "50", "50A", "52", "54", "54A", "56", "58", "60", "62",
-              "23", "21", "17", "15", "13", "26F", "26A/H", "7", "5", "1", "10",
-              "18", "20", "22", "24", "26", "6", "4A", "4", "2",
+              "28",
+              "28A",
+              "30",
+              "32",
+              "34",
+              "36",
+              "38",
+              "40",
+              "40A",
+              "42",
+              "44",
+              "46",
+              "48",
+              "50",
+              "50A",
+              "52",
+              "54",
+              "54A",
+              "56",
+              "58",
+              "60",
+              "62",
+              "23",
+              "21",
+              "17",
+              "15",
+              "13",
+              "26F",
+              "26A/H",
+              "7",
+              "5",
+              "1",
+              "10",
+              "18",
+              "20",
+              "22",
+              "24",
+              "26",
+              "6",
+              "4A",
+              "4",
+              "2",
             ],
           },
           {
@@ -829,8 +1834,27 @@
           {
             street: "Pastrengo",
             civici: [
-              "2A", "4", "6", "8", "12", "14", "16", "18", "18A", "20", "22",
-              "24", "26", "28", "30", "34", "36", "36A", "38", "40", "21",
+              "2A",
+              "4",
+              "6",
+              "8",
+              "12",
+              "14",
+              "16",
+              "18",
+              "18A",
+              "20",
+              "22",
+              "24",
+              "26",
+              "28",
+              "30",
+              "34",
+              "36",
+              "36A",
+              "38",
+              "40",
+              "21",
             ],
           },
           {
@@ -870,17 +1894,27 @@
 
       const routeFlat = {};
       const routeMaxIndex = {};
-      let consegne = [];
+      let tutteLeStradeMaster = [];
 
       function inizializzaMotoreRicerca() {
+        tutteLeStradeMaster = [];
         for (let zona in masterRoute) {
-          // Creiamo gli array dinamicamente per qualsiasi zona esista
           routeFlat[zona] = [];
           routeMaxIndex[zona] = {};
 
           let indexCounter = 0;
           masterRoute[zona].forEach((blocco) => {
             let stradaUpper = blocco.street.toUpperCase();
+            
+            // Popoliamo la lista globale delle strade per gli scanner OCR
+            if (!tutteLeStradeMaster.some(s => s.originale === stradaUpper)) {
+              tutteLeStradeMaster.push({
+                originale: stradaUpper,
+                puro: stradaUpper,
+                zona: zona
+              });
+            }
+
             blocco.civici.forEach((civ) => {
               let civicoUpper = String(civ).toUpperCase();
               routeFlat[zona].push({
@@ -895,79 +1929,13 @@
         }
       }
 
-      // Tutte le strade per lo scanner nativo - create unendo masterRoute
-      let tutteLeStradeMaster = [];
-      function preparaStradeScanner() {
-        tutteLeStradeMaster = [];
-        for (let z in masterRoute) {
-            masterRoute[z].forEach(b => {
-                let nomeStrada = b.street.toUpperCase();
-                // Rimuove prefissi per il match
-                let puro = nomeStrada.replace(/^(VIA|VIALE|PIAZZA|PIAZZETTA|PZZALE|BORGO)\s+/i, '').trim();
-                tutteLeStradeMaster.push({
-                    originale: nomeStrada,
-                    puro: puro,
-                    zona: z
-                });
-            });
-        }
-      }
-
-      function gestisciScansioneNativa(testoGrezzo) {
-        if (!testoGrezzo || testoGrezzo.trim() === "") return;
-
-        let testoPulito = testoGrezzo.toUpperCase().replace(/\n/g, ' ');
-        testoPulito = testoPulito.replace(/[^A-Z0-9\s\/\-\,]/g, ' '); 
-
-        let stradaTrovata = null;
-        let zonaTrovata = null;
-        let civicoTrovato = null;
-        
-        for (let s of tutteLeStradeMaster) {
-            let parolaChiaveStrada = s.puro.replace(/^(VIA|VIALE|PIAZZA|PIAZZETTA|PZZALE|BORGO)\s+/i, '').trim();
-            const regexVia = new RegExp(`\\b${parolaChiaveStrada}\\b`);
-            
-            if (regexVia.test(testoPulito)) {
-                stradaTrovata = s.originale; 
-                zonaTrovata = s.zona;
-                
-                const indexInizioVia = testoPulito.search(regexVia);
-                const testoDopoVia = testoPulito.substring(indexInizioVia + parolaChiaveStrada.length);
-                
-                const matchCivico = testoDopoVia.match(/^[^\d]*(\d+[A-Z0-9\/\-]*)/);
-                if (matchCivico && matchCivico[1]) {
-                    civicoTrovato = matchCivico[1]; 
-                }
-                break; 
-            }
-        }
-
-        if (stradaTrovata && civicoTrovato) {
-            document.getElementById("zona").value = zonaTrovata;
-            cambioZona(); 
-            
-            document.getElementById("strada").value = stradaTrovata;
-            document.getElementById("civico").value = civicoTrovato;
-            document.getElementById("pezzi").value = "1";
-            aggiungiPacco();
-            
-            mostraAlert(`✅ AGGIUNTO: ${stradaTrovata} ${civicoTrovato}\n(${zonaTrovata})`);
-            
-        } else {
-            mostraAlert("❌ Indirizzo non riconosciuto. Scansiona di nuovo o inserisci a mano.");
-        }
-
-        document.getElementById("inputScannerNativo").value = "";
-      }
+      let consegne = [];
 
       window.onload = () => {
         inizializzaMotoreRicerca();
-        preparaStradeScanner(); // Aggiunto per lo scanner
         caricaDatiLocali();
 
         let zonaSalvata = localStorage.getItem("zonaSelezionata");
-
-        // Se la zona salvata non c'è, o hai rimosso quella zona dal codice, prende la prima disponibile in automatico
         if (!zonaSalvata || !masterRoute[zonaSalvata]) {
           zonaSalvata = Object.keys(masterRoute)[0];
         }
@@ -1007,7 +1975,7 @@
         localStorage.setItem("zonaSelezionata", zonaSelezionata);
         document.getElementById("header-zona-text").innerText = zonaSelezionata;
         aggiornaStrade();
-        renderLista(); // AGGIUNTO: Aggiorna la vista quando cambi zona
+        renderLista();
         chiudiMenu();
       }
 
@@ -1015,14 +1983,12 @@
         const zona = document.getElementById("zona").value;
         const selectStrada = document.getElementById("strada");
 
-        // Controllo di sicurezza: se la zona non esiste, fermati qui
         if (!masterRoute[zona]) {
           selectStrada.innerHTML =
             '<option value="">Errore: zona non trovata</option>';
           return;
         }
 
-        // Estrae le strade uniche, le formatta belle e le ordina alfabeticamente
         const stradeUniche = [
           ...new Set(masterRoute[zona].map((b) => b.street)),
         ];
@@ -1034,30 +2000,27 @@
         });
       }
 
-      function aggiungiPacco() {
-        const zona = document.getElementById("zona").value;
-        const strada = document.getElementById("strada").value; // Già uppercase dal select
-        const civico = document
-          .getElementById("civico")
-          .value.trim()
-          .toUpperCase();
-        const pezzi = parseInt(document.getElementById("pezzi").value);
+      // Funzione unificata per aggiungere o aggiornare pacchi
+      function aggiungiPacco(customZona = null, customStrada = null, customCivico = null, customPezzi = null, customEstero = null) {
+        const zona = customZona || document.getElementById("zona").value;
+        const strada = customStrada || document.getElementById("strada").value;
+        const civico = (customCivico !== null ? customCivico : document.getElementById("civico").value).trim().toUpperCase();
+        const pezzi = customPezzi !== null ? customPezzi : parseInt(document.getElementById("pezzi").value);
+        const estero = customEstero !== null ? customEstero : document.getElementById("checkEstero").checked;
 
         if (!civico) return mostraAlert("Devi inserire un numero civico.");
         if (isNaN(pezzi) || pezzi < 1) return mostraAlert("Pezzi non validi.");
 
-        // Controlla se esiste già questa consegna esatta per la ZONA CORRENTE
         const indiceEsistente = consegne.findIndex(
-          (c) => c.zona === zona && c.strada === strada && c.civico === civico,
+          (c) => c.zona === zona && c.strada === strada && c.civico === civico && c.estero === estero,
         );
 
         if (indiceEsistente !== -1) {
           consegne[indiceEsistente].pezzi += pezzi;
         } else {
-          // Calcolo Ordinamento e controllo Fuori Rotta
-          const foundMaster = routeFlat[zona].find(
+          const foundMaster = routeFlat[zona] ? routeFlat[zona].find(
             (item) => item.strada === strada && item.civico === civico,
-          );
+          ) : null;
 
           let ordineId = 0;
           let fuoriRotta = false;
@@ -1066,29 +2029,176 @@
             ordineId = foundMaster.ordineId;
           } else {
             fuoriRotta = true;
-            // Mettiamo il civico sconosciuto in fondo al blocco della sua strada
-            ordineId = (routeMaxIndex[zona][strada] || 999000) + 1;
-            // Aggiungiamo un decimale basato sul tempo per non sovrapporre più civici sconosciuti
+            ordineId = (routeMaxIndex[zona] && routeMaxIndex[zona][strada] ? routeMaxIndex[zona][strada] : 999000) + 1;
             ordineId += (Date.now() % 1000) / 1000;
           }
 
           consegne.push({
             id: Date.now(),
-            zona: zona, // Salviamo l'etichetta della zona per separare le liste
+            zona: zona,
             strada: strada,
             civico: civico,
             pezzi: pezzi,
             ordineId: ordineId,
             fuoriRotta: fuoriRotta,
+            estero: estero,
           });
         }
 
-        document.getElementById("civico").value = "";
-        document.getElementById("pezzi").value = "1";
-        document.getElementById("civico").focus();
+        if (!customZona) {
+          document.getElementById("civico").value = "";
+          document.getElementById("pezzi").value = "1";
+          document.getElementById("checkEstero").checked = false;
+          document.getElementById("civico").focus();
+        }
 
         salvaDatiLocali();
         renderLista();
+      }
+
+      // --- MOTORE DI ANALISI TESTO COMUNE (PER ENTRAMBI GLI SCANNER) ---
+      function elaboraTestoScansionato(testoGrezzo) {
+        if (!testoGrezzo || testoGrezzo.trim() === "") return;
+
+        console.log("Testo elaborato:\n", testoGrezzo);
+
+        let testoPulito = testoGrezzo.toUpperCase().replace(/\n/g, ' ');
+        testoPulito = testoPulito.replace(/[^A-Z0-9\s\/\-\,]/g, ' '); 
+
+        let stradaTrovata = null;
+        let zonaTrovata = null;
+        let civicoTrovato = null;
+        
+        for (let s of tutteLeStradeMaster) {
+            let parolaChiaveStrada = s.puro.replace(/^(VIA|VIALE|PIAZZA|PIAZZETTA|PZZALE|BORGO)\s+/i, '').trim();
+            const regexVia = new RegExp(`\\b${parolaChiaveStrada}\\b`);
+            
+            if (regexVia.test(testoPulito)) {
+                stradaTrovata = s.originale; 
+                zonaTrovata = s.zona;
+                
+                const indexInizioVia = testoPulito.search(regexVia);
+                const testoDopoVia = testoPulito.substring(indexInizioVia + parolaChiaveStrada.length);
+                
+                const matchCivico = testoDopoVia.match(/^[^\d]*(\d+[A-Z0-9\/\-]*)/);
+                if (matchCivico && matchCivico[1]) {
+                    civicoTrovato = matchCivico[1]; 
+                }
+                break; 
+            }
+        }
+
+        const isEsteroChecked = document.getElementById("checkEstero").checked;
+
+        if (stradaTrovata && civicoTrovato) {
+            document.getElementById("zona").value = zonaTrovata;
+            cambioZona(); 
+            aggiungiPacco(zonaTrovata, stradaTrovata, civicoTrovato, 1, isEsteroChecked);
+            mostraAlert(`✅ AGGIUNTO:\n${stradaTrovata} ${civicoTrovato}\n(${zonaTrovata})`);
+        } else {
+            mostraAlert("❌ Indirizzo non riconosciuto. Scansiona di nuovo o inserisci a mano.");
+        }
+      }
+
+      // Scanner 1: Tesseract.js (Scatto rapido)
+      async function elaboraFotoConTesseract(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const btn = document.getElementById("btnScansione");
+        const btnText = document.getElementById("btnScansioneText");
+        
+        btn.classList.add("opacity-50", "cursor-not-allowed");
+        btn.disabled = true;
+        btnText.innerText = "Attendere...";
+
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'ita');
+            elaboraTestoScansionato(text);
+        } catch (error) {
+            console.error(error);
+            mostraAlert("❌ Errore durante la lettura dell'immagine.");
+        } finally {
+            btn.classList.remove("opacity-50", "cursor-not-allowed");
+            btn.disabled = false;
+            btnText.innerText = "Scatto rapido";
+            event.target.value = "";
+        }
+      }
+
+      // Scanner 2: Nativo iOS (Tastiera)
+      function gestisciScansioneNativa(testoGrezzo) {
+        if (!testoGrezzo || testoGrezzo.trim() === "") return;
+        elaboraTestoScansionato(testoGrezzo);
+        document.getElementById("inputScannerNativo").value = "";
+      }
+
+      // --- MODIFICA PACCO ---
+      function apriModaleModifica(id) {
+        const pacco = consegne.find(c => c.id === id);
+        if (!pacco) return;
+
+        document.getElementById("editId").value = pacco.id;
+        document.getElementById("editCivico").value = pacco.civico;
+        document.getElementById("editPezzi").value = pacco.pezzi;
+        document.getElementById("editEstero").checked = !!pacco.estero;
+
+        // Popola select strade nel modal
+        const selectEditStrada = document.getElementById("editStrada");
+        selectEditStrada.innerHTML = "";
+        const stradeUniche = [...new Set(masterRoute[pacco.zona].map(b => b.street))];
+        stradeUniche.sort((a, b) => a.localeCompare(b));
+        stradeUniche.forEach(s => {
+          selectEditStrada.innerHTML += `<option value="${s.toUpperCase()}">${s}</option>`;
+        });
+        selectEditStrada.value = pacco.strada;
+
+        document.getElementById("editModal").classList.remove("hidden");
+        setTimeout(() => {
+          document.getElementById("editModal").classList.remove("opacity-0");
+          document.getElementById("editBox").classList.remove("scale-95");
+        }, 10);
+      }
+
+      function chiudiEditModal() {
+        document.getElementById("editModal").classList.add("opacity-0");
+        document.getElementById("editBox").classList.add("scale-95");
+        setTimeout(() => document.getElementById("editModal").classList.add("hidden"), 300);
+      }
+
+      function salvaModificaPacco() {
+        const id = parseInt(document.getElementById("editId").value);
+        const nuovaStrada = document.getElementById("editStrada").value;
+        const nuovoCivico = document.getElementById("editCivico").value.trim().toUpperCase();
+        const nuoviPezzi = parseInt(document.getElementById("editPezzi").value);
+        const nuovoEstero = document.getElementById("editEstero").checked;
+
+        if (!nuovoCivico) return mostraAlert("Inserisci un civico valido.");
+
+        const pacco = consegne.find(c => c.id === id);
+        if (pacco) {
+          pacco.strada = nuovaStrada;
+          pacco.civico = nuovoCivico;
+          pacco.pezzi = nuoviPezzi;
+          pacco.estero = nuovoEstero;
+
+          // Ricalcola ordine
+          const foundMaster = routeFlat[pacco.zona] ? routeFlat[pacco.zona].find(
+            (item) => item.strada === nuovaStrada && item.civico === nuovoCivico,
+          ) : null;
+
+          if (foundMaster) {
+            pacco.ordineId = foundMaster.ordineId;
+            pacco.fuoriRotta = false;
+          } else {
+            pacco.fuoriRotta = true;
+            pacco.ordineId = (routeMaxIndex[pacco.zona] && routeMaxIndex[pacco.zona][nuovaStrada] ? routeMaxIndex[pacco.zona][nuovaStrada] : 999000) + 1;
+          }
+
+          salvaDatiLocali();
+          renderLista();
+        }
+        chiudiEditModal();
       }
 
       function renderLista() {
@@ -1096,7 +2206,6 @@
         const contatoreUI = document.getElementById("contatore-totale");
         const zonaAttuale = document.getElementById("zona").value;
 
-        // Filtra solo le consegne della zona selezionata
         const consegneZona = consegne.filter((c) => c.zona === zonaAttuale);
 
         if (consegneZona.length === 0) {
@@ -1109,44 +2218,51 @@
         container.innerHTML = "";
         let totalePacchi = 0;
 
-        // Ordiniamo la lista basandoci sull'indice del giro impostato
         consegneZona.sort((a, b) => a.ordineId - b.ordineId);
 
         consegneZona.forEach((c) => {
           totalePacchi += c.pezzi;
 
-          // Stili differenti se è fuori rotta (rosso)
           const bgClass = c.fuoriRotta
             ? "bg-red-50 border-red-200"
             : "bg-white border-slate-100";
           const textStrada = c.fuoriRotta ? "text-red-500" : "text-blue-600";
           const textCivico = c.fuoriRotta ? "text-red-700" : "text-slate-800";
+          
           const warningBadge = c.fuoriRotta
-            ? `<span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">Fuori Lista</span>`
+            ? `<span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-1">Fuori Lista</span>`
+            : "";
+
+          const esteroBadge = c.estero
+            ? `<span class="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-1 flex items-center gap-0.5">🌍 Estero</span>`
             : "";
 
           container.innerHTML += `
-                          <div class="${bgClass} p-4 rounded-xl shadow-sm border flex justify-between items-center transform transition active:scale-[0.98]">
-                              <div class="flex flex-col">
-                                  <span class="text-xs font-bold ${textStrada} mb-0.5">${c.strada}</span>
-                                  <div class="flex items-center">
-                                      <span class="text-xl font-black ${textCivico}">Civ. ${c.civico}</span>
-                                      ${warningBadge}
-                                  </div>
-                              </div>
-                              <div class="flex items-center gap-3">
-                                  <div class="bg-white/50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 border border-slate-200">
-                                      <span class="text-lg">📦</span>
-                                      <span class="font-extrabold text-lg text-slate-700">${c.pezzi}</span>
-                                  </div>
-                                  <button onclick="rimuoviPacco(${c.id})" class="text-slate-300 hover:text-red-600 p-2 rounded-full hover:bg-white transition">
-                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                  </button>
-                              </div>
-                          </div>
-                      `;
+              <div class="${bgClass} p-4 rounded-xl shadow-sm border flex justify-between items-center transform transition active:scale-[0.98]">
+                  <div class="flex flex-col">
+                      <span class="text-xs font-bold ${textStrada} mb-0.5">${c.strada}</span>
+                      <div class="flex items-center flex-wrap gap-1">
+                          <span class="text-xl font-black ${textCivico}">Civ. ${c.civico}</span>
+                          ${warningBadge}
+                          ${esteroBadge}
+                      </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                      <div class="bg-white/50 px-2.5 py-1.5 rounded-lg flex items-center gap-1 border border-slate-200">
+                          <span class="text-md">📦</span>
+                          <span class="font-extrabold text-md text-slate-700">${c.pezzi}</span>
+                      </div>
+                      <button onclick="apriModaleModifica(${c.id})" class="text-slate-400 hover:text-blue-600 p-2 rounded-full hover:bg-slate-100 transition" title="Modifica">
+                          ✏️
+                      </button>
+                      <button onclick="rimuoviPacco(${c.id})" class="text-slate-300 hover:text-red-600 p-2 rounded-full hover:bg-white transition" title="Elimina">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                      </button>
+                  </div>
+              </div>
+          `;
         });
 
         contatoreUI.innerText = `${totalePacchi} pacchi`;
@@ -1166,7 +2282,6 @@
         const lineHeightData = 35 * scale;
         const wrapWidth = width - marginX * 2;
 
-        // 1. Raggruppa i blocchi di consegne in base al giro (già ordinato)
         const sortedConsegne = [...consegneZona].sort(
           (a, b) => a.ordineId - b.ordineId,
         );
@@ -1182,19 +2297,18 @@
         });
         if (currentBlock) canvasBlocks.push(currentBlock);
 
-        // 2. Simuliamo il disegno per calcolare l'altezza esatta
         const ctxDummy = document.createElement("canvas").getContext("2d");
         ctxDummy.font = `bold ${32 * scale}px -apple-system, system-ui, sans-serif`;
 
         let simY = 60 * scale + lineHeightHeader + 20 * scale;
 
         for (const block of canvasBlocks) {
-          simY += lineHeightData; // Spazio per il nome Strada
+          simY += lineHeightData;
 
           let cursorX = marginX;
           for (let i = 0; i < block.items.length; i++) {
             const item = block.items[i];
-            let text = item.civico + (item.pezzi > 1 ? `(${item.pezzi})` : "");
+            let text = item.civico + (item.pezzi > 1 ? `(${item.pezzi})` : "") + (item.estero ? "🌍" : "");
             let testText = text + (i < block.items.length - 1 ? ", " : "");
 
             let metrics = ctxDummy.measureText(testText);
@@ -1203,26 +2317,23 @@
               cursorX > marginX
             ) {
               cursorX = marginX;
-              simY += lineHeightData; // a capo
+              simY += lineHeightData;
             }
             cursorX += metrics.width;
           }
-          simY += lineHeightData + 15 * scale; // Fine blocco
+          simY += lineHeightData + 15 * scale;
         }
 
         const height = Math.max(500 * scale, simY);
 
-        // 3. Creazione del Canvas Definitivo
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         canvas.width = width;
         canvas.height = height;
 
-        // Sfondo
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, width, height);
 
-        // Intestazione
         let y = 60 * scale;
         const oggi = new Date();
         const dataStr = oggi.toLocaleDateString("it-IT", {
@@ -1239,9 +2350,7 @@
         );
         y += lineHeightHeader + 15 * scale;
 
-        // Disegno i dati
         for (const block of canvasBlocks) {
-          // Nome Strada
           ctx.fillStyle = "#4ade80";
           ctx.font = `bold ${28 * scale}px -apple-system, system-ui, sans-serif`;
           ctx.fillText(block.strada.toUpperCase(), marginX, y);
@@ -1252,11 +2361,10 @@
           let cursorX = marginX;
           for (let i = 0; i < block.items.length; i++) {
             const item = block.items[i];
-            let text = item.civico + (item.pezzi > 1 ? `(${item.pezzi})` : "");
+            let text = item.civico + (item.pezzi > 1 ? `(${item.pezzi})` : "") + (item.estero ? "🌍" : "");
             let isLast = i === block.items.length - 1;
             let textToDraw = text + (isLast ? "" : ", ");
 
-            // Colore rosso acceso se fuori rotta, altrimenti bianco
             ctx.fillStyle = item.fuoriRotta ? "#ef4444" : "#ffffff";
 
             let metrics = ctx.measureText(textToDraw);
@@ -1265,7 +2373,7 @@
               cursorX > marginX
             ) {
               cursorX = marginX;
-              y += lineHeightData; // vai a capo
+              y += lineHeightData;
             }
 
             ctx.fillText(textToDraw, cursorX, y);
@@ -1316,7 +2424,6 @@
 
           btn.onclick = () => {
             const zonaAttuale = document.getElementById("zona").value;
-            // Mantiene intatti i pacchi delle altre zone, rimuove solo l'attuale
             consegne = consegne.filter((c) => c.zona !== zonaAttuale);
             salvaDatiLocali();
             renderLista();
@@ -1339,7 +2446,6 @@
         const dati = localStorage.getItem("consegneData2");
         if (dati) {
           consegne = JSON.parse(dati);
-          // Previene che i vecchi dati spariscano assegnandoli a Zona A di default
           consegne.forEach((c) => {
             if (!c.zona) c.zona = "Zona A";
           });
